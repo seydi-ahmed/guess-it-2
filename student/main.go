@@ -9,14 +9,17 @@ import (
 )
 
 func main() {
-	tab := []float64{}
-	inf := 0
-	sup := 0
+	tab := []int{}
+	// inf := 0
+	// sup := 0
+	y := 0
 	reader := bufio.NewScanner(os.Stdin)
 
 	//*******************************************************************************
 
+	x := 0
 	for reader.Scan() {
+		x++
 		nbr, _ := strconv.Atoi(reader.Text())
 		moy := int(math.Round(Moyenne(tab)))
 
@@ -27,39 +30,59 @@ func main() {
 				nbr = moy
 			}
 		}
-		tab = append(tab, float64(nbr))
+		tab = append(tab, nbr)
 
 		//*******************************
 
-		if len(tab) <= 10 {
-			inf = int(nbr) - 100
-			sup = int(nbr) + 100
-		} else {
-			average := Moyenne(tab)
-			std := Deviation(tab, average)
-			inf = int(math.Round(average - 1.28*std))
-			sup = int(math.Round(average + 1.28*std))
+		if (calculatePearsonCoefficient(tab) < 1 && calculatePearsonCoefficient(tab) > 0.5) || (calculatePearsonCoefficient(tab) > -1 && calculatePearsonCoefficient(tab) < -0.5) {
+			a, b := calculateLinearRegressionLine(tab)
+			y = int(math.Round((a * float64(x)) + b))
 		}
-		fmt.Printf("%d %d\n", inf, sup)
+
+		// fmt.Printf("%d %d\n", inf, sup)
+		fmt.Println(y)
 	}
 }
 
-func Variance(tab []float64, moyenne float64) int {
-	var total float64
-	for _, v := range tab {
-		total += math.Pow(v-moyenne, 2)
+func calculateLinearRegressionLine(data []int) (float64, float64) {
+	n := len(data)
+	sumX, sumY, sumXY, sumXSquare := 0, 0, 0, 0
+
+	for i := 0; i < n; i++ {
+		sumX += i
+		sumY += data[i]
+		sumXY += (i) * data[i]
+		sumXSquare += (i) * (i)
 	}
-	return int(math.Round(total / float64(len(tab))))
+
+	slope := float64(n*sumXY-sumX*sumY) / float64(n*sumXSquare-sumX*sumX)
+	// intercept := float64(sumY)/float64(n) - slope*float64(sumX)/float64(n)
+	intercept := float64((float64(sumY) - slope*float64(sumX)) / float64(n))
+	return slope, intercept
 }
 
-func Deviation(tab []float64, moyenne float64) float64 {
-	return math.Sqrt(float64(Variance(tab, moyenne)))
+func calculatePearsonCoefficient(data []int) float64 {
+	n := len(data)
+	sumX, sumY, sumXY, sumXSquare, sumYSquare := 0, 0, 0, 0, 0
+
+	for i := 0; i < n; i++ {
+		sumX += i
+		sumY += data[i]
+		sumXY += (i) * data[i]
+		sumXSquare += (i) * (i)
+		sumYSquare += data[i] * data[i]
+	}
+
+	numerator := float64(n*sumXY - sumX*sumY)
+	denominator := math.Sqrt(float64(n*sumXSquare-sumX*sumX) * float64(n*sumYSquare-sumY*sumY))
+
+	return numerator / denominator
 }
 
-func Moyenne(tab []float64) float64 {
-	var total float64
+func Moyenne(tab []int) float64 {
+	var total int
 	for _, v := range tab {
 		total += v
 	}
-	return total / float64(len(tab))
+	return float64(float64(total) / float64(len(tab)))
 }
