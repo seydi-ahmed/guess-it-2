@@ -9,85 +9,66 @@ import (
 )
 
 func main() {
-	tab := []int{}
-	inf := 0
-	sup := 0
 	reader := bufio.NewScanner(os.Stdin)
-
-	//*******************************************************************************
-
-	x := 1
+	var data []float64
 	for reader.Scan() {
-		nbr, _ := strconv.Atoi(reader.Text())
-		moy := int(math.Round(Moyenne(tab)))
-
-		//*******************************
-
-		if int(math.Abs(float64(nbr))) > moy+10000 {
-			if len(tab) > 0 {
-				nbr = moy
-			}
+		num, err := strconv.ParseFloat(reader.Text(), 64)
+		if err != nil {
+			fmt.Println("Error: number is not valid")
+			return
 		}
-		tab = append(tab, nbr)
-
-		//*******************************
-
-		//if (calculatePearsonCoefficient(tab) < 1 && calculatePearsonCoefficient(tab) > 0.5) || (calculatePearsonCoefficient(tab) > -1 && calculatePearsonCoefficient(tab) < -0.5) {
-		if len(tab) <= 10 {
-			inf = int(nbr) - 100
-			sup = int(nbr) + 100
-		} else {
-			a, b := calculateLinearRegressionLine(tab)
-			inf = int(math.Round((a * float64(x)) - b))
-			sup = int(math.Round((a * float64(x)) + b))
-		}
-		//}
-
-		fmt.Printf("%d %d\n", inf, sup)
-
-		x++
+		data = append(data, num)
+		min, max := RangeGuess(data)
+		fmt.Println(int(math.Round(min)), int(math.Round(max)))
 	}
 }
 
-func calculateLinearRegressionLine(data []int) (float64, float64) {
-	n := len(data)
-	sumX, sumY, sumXY, sumXSquare := 0, 0, 0, 0
+func RangeGuess(data []float64) (float64, float64) {
+	var min, max float64
+	slope, intercept := LinearRegression(data)
+	cov := PCC(data)
+	prediction := slope*float64(len(data)-1) + intercept
+	max = prediction + prediction*(1-cov)
+	min = prediction - prediction*(1-cov)
+	return min, max
+}
 
-	for i := 0; i < n; i++ {
-		sumX += i
+func LinearRegression(data []float64) (float64, float64) {
+	sumX := 0.00
+	sumX2 := 0.00
+	sumY := 0.00
+	sumXY := 0.00
+	sumSQR := 0.00
+	lngth := float64(len(data))
+	for i := 0; i < len(data); i++ {
+		sumX += float64(i + 1)
+		sumX2 += float64(i)
 		sumY += data[i]
-		sumXY += (i) * data[i]
-		sumXSquare += (i) * (i)
+		sumSQR += float64((i + 1) * (i + 1))
+		sumXY += (float64(i)) * data[i]
 	}
-
-	slope := float64(n*sumXY-sumX*sumY) / float64(n*sumXSquare-sumX*sumX)
-	// intercept := float64(sumY)/float64(n) - slope*float64(sumX)/float64(n)
-	intercept := float64((float64(sumY) - slope*float64(sumX)) / float64(n))
+	slope := ((lngth * sumXY) - (sumX2 * sumY)) / ((lngth * sumSQR) - (sumX * sumX))
+	if math.IsNaN(slope) {
+		slope = 0
+	}
+	intercept := data[len(data)-1] - (slope * float64(len(data)))
 	return slope, intercept
 }
 
-func calculatePearsonCoefficient(data []int) float64 {
-	n := len(data)
-	sumX, sumY, sumXY, sumXSquare, sumYSquare := 0, 0, 0, 0, 0
-
-	for i := 0; i < n; i++ {
-		sumX += i
+func PCC(data []float64) float64 {
+	sumX := 0.00
+	sumY := 0.00
+	sumXY := 0.00
+	sumSQRX := 0.00
+	sumSQRY := 0.00
+	lngth := float64(len(data))
+	for i := 0; i < len(data); i++ {
+		sumX += float64(i + 1)
 		sumY += data[i]
-		sumXY += (i) * data[i]
-		sumXSquare += (i) * (i)
-		sumYSquare += data[i] * data[i]
+		sumSQRX += float64((i + 1) * (i + 1))
+		sumSQRY += data[i] * data[i]
+		sumXY += (float64(i + 1)) * data[i]
 	}
-
-	numerator := float64(n*sumXY - sumX*sumY)
-	denominator := math.Sqrt(float64(n*sumXSquare-sumX*sumX) * float64(n*sumYSquare-sumY*sumY))
-
-	return numerator / denominator
-}
-
-func Moyenne(tab []int) float64 {
-	var total int
-	for _, v := range tab {
-		total += v
-	}
-	return float64(float64(total) / float64(len(tab)))
+	covariance := ((lngth * sumXY) - (sumX * sumY)) / math.Sqrt(((lngth*sumSQRX)-(sumX*sumX))*((lngth*sumSQRY)-(sumY*sumY)))
+	return covariance
 }
